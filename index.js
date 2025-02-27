@@ -29,6 +29,13 @@ function createBot() {
    bot.loadPlugin(pathfinder);
    const mcData = require('minecraft-data')(bot.version);
    const defaultMove = new Movements(bot, mcData);
+   
+   // Garantir que bot.settings está definido
+   if (!bot.settings) {
+      bot.settings = {};
+   }
+   
+   // Agora podemos definir colorsEnabled sem erro
    bot.settings.colorsEnabled = false;
 
    let pendingPromise = Promise.resolve();
