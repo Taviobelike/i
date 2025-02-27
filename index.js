@@ -16,6 +16,9 @@ app.listen(8000, () => {
   console.log('Server started');
 });
 
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+
 function createBot() {
    const bot = mineflayer.createBot({
       username: config['bot-account']['username'],
@@ -29,13 +32,6 @@ function createBot() {
    bot.loadPlugin(pathfinder);
    const mcData = require('minecraft-data')(bot.version);
    const defaultMove = new Movements(bot, mcData);
-   
-   // Garantir que bot.settings está definido
-   if (!bot.settings) {
-      bot.settings = {};
-   }
-   
-   // Agora podemos definir colorsEnabled sem erro
    bot.settings.colorsEnabled = false;
 
    let pendingPromise = Promise.resolve();
@@ -46,15 +42,14 @@ function createBot() {
          console.log(`[Auth] Sent /register command.`);
 
          bot.once('chat', (username, message) => {
-            console.log(`[ChatLog] <${username}> ${message}`); // Log all chat messages
+            console.log(`[ChatLog] <${username}> ${message}`); 
 
-            // Check for various possible responses
             if (message.includes('successfully registered')) {
                console.log('[INFO] Registration confirmed.');
                resolve();
             } else if (message.includes('already registered')) {
                console.log('[INFO] Bot was already registered.');
-               resolve(); // Resolve if already registered
+               resolve();
             } else if (message.includes('Invalid command')) {
                reject(`Registration failed: Invalid command. Message: "${message}"`);
             } else {
@@ -70,7 +65,7 @@ function createBot() {
          console.log(`[Auth] Sent /login command.`);
 
          bot.once('chat', (username, message) => {
-            console.log(`[ChatLog] <${username}> ${message}`); // Log all chat messages
+            console.log(`[ChatLog] <${username}> ${message}`); 
 
             if (message.includes('successfully logged in')) {
                console.log('[INFO] Login successful.');
@@ -155,13 +150,18 @@ function createBot() {
       );
    });
 
-   if (config.utils['auto-reconnect']) {
-      bot.on('end', () => {
+   // Implementando reconexão com atraso
+   bot.on('end', () => {
+      if (reconnectAttempts < maxReconnectAttempts) {
+         reconnectAttempts++;
+         console.log(`[INFO] Tentativa de reconexão #${reconnectAttempts}`);
          setTimeout(() => {
             createBot();
-         }, config.utils['auto-recconect-delay']);
-      });
-   }
+         }, reconnectAttempts * 10000); // A cada tentativa, o tempo de espera aumenta (10, 20, 30 segundos)
+      } else {
+         console.log('[INFO] Limite de tentativas de reconexão atingido.');
+      }
+   });
 
    bot.on('kicked', (reason) =>
       console.log(
